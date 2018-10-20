@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stddef.h>
 
+#include "stack.h"
+
 typedef struct
 {
     char *src_path;
@@ -47,6 +49,8 @@ void *copy_directory(void *copy_args_raw)
     // More about MODE: http://man7.org/linux/man-pages/man7/inode.7.html
     mkdir(copy_args->dest_path, S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO);
 
+    Stack *childs = stackCreate();
+
     for (;;)
     {
         readdir_r(dir, dir_entry_prev, &dir_entry);
@@ -64,11 +68,25 @@ void *copy_directory(void *copy_args_raw)
             Copy_Args *next_copy_args = malloc(sizeof(Copy_Args));
             next_copy_args->src_path = next_src_path;
             next_copy_args->dest_path = next_dest_path;
-            copy_directory(next_copy_args);
+
+            pthread_t* child = malloc(sizeof(pthread_t));
+            while (pthread_create(child, NULL, copy_directory, next_copy_args));
+            stackPush(childs, child);
         }
         else if (dir_entry->d_type == DT_REG)
+        {
             printf("%s\n", dir_entry->d_name);
+        }
     }
+
+    while(!stackIsEmpty(childs))
+    {
+        pthread_t* child = stackPop(childs);
+        pthread_join(*child, NULL);
+        free(child);
+    }
+
+    stackDestroy(childs);
 
     free(dir_entry_prev);
     free(dir_entry);
@@ -113,7 +131,7 @@ int main(int argc, char *argv[])
     Copy_Args *copy_args = malloc(sizeof(Copy_Args));
     copy_args->src_path = malloc(strlen(argv[1]) + 1);
     strcpy(copy_args->src_path, argv[1]);
-    copy_args->dest_path = malloc(strlen(argv[2])+ 1);
+    copy_args->dest_path = malloc(strlen(argv[2]) + 1);
     strcpy(copy_args->dest_path, argv[2]);
 
     if (0 != set_dest_dir_inode(copy_args->dest_path))
