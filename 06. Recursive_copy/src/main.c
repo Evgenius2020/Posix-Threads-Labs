@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stddef.h>
@@ -15,7 +16,7 @@ typedef struct
     char *dest_path;
 } Copy_Args;
 
-char *create_path_cat(char *root, char *path)
+char *alloc_path_concat(char *root, char *path)
 {
     char *result = malloc(strlen(root) + strlen(path) + 2);
 
@@ -26,7 +27,7 @@ char *create_path_cat(char *root, char *path)
     return result;
 }
 
-int DEST_DIR_INODE_NUMBER;
+int DEST_DIR_INODE;
 
 void *copy_directory(void *copy_args_raw)
 {
@@ -55,18 +56,15 @@ void *copy_directory(void *copy_args_raw)
         {
             if (!(strcmp(dir_entry->d_name, ".") * strcmp(dir_entry->d_name, "..")))
                 continue;
-            if (dir_entry->d_ino == DEST_DIR_INODE_NUMBER)
+            if (dir_entry->d_ino == DEST_DIR_INODE)
                 continue;
 
-            char *next_src_path = create_path_cat(copy_args->src_path, dir_entry->d_name);
-            char *next_dest_path = create_path_cat(copy_args->dest_path, dir_entry->d_name);
-            Copy_Args next_copy_args;
-            next_copy_args.src_path = next_src_path;
-            next_copy_args.dest_path = next_dest_path;
-            copy_directory(&next_copy_args);
-
-            free(next_src_path);
-            free(next_dest_path);
+            char *next_src_path = alloc_path_concat(copy_args->src_path, dir_entry->d_name);
+            char *next_dest_path = alloc_path_concat(copy_args->dest_path, dir_entry->d_name);
+            Copy_Args *next_copy_args = malloc(sizeof(Copy_Args));
+            next_copy_args->src_path = next_src_path;
+            next_copy_args->dest_path = next_dest_path;
+            copy_directory(next_copy_args);
         }
         else if (dir_entry->d_type == DT_REG)
             printf("%s\n", dir_entry->d_name);
@@ -75,28 +73,30 @@ void *copy_directory(void *copy_args_raw)
     free(dir_entry_prev);
     free(dir_entry);
     closedir(dir);
+
+    free(copy_args->src_path);
+    free(copy_args->dest_path);
+    free(copy_args);
 }
 
-void init_dest_inode(char *path)
+int set_dest_dir_inode(char *path)
 {
     mkdir(path, S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO);
     int fd = open(path, O_RDONLY);
 
-    if (fd < 0)
-    {
-        // some error occurred while opening the file
-        // use [perror("Error opening the file");] to get error description
-    }
+    if (-1 == fd)
+        return -1;
 
     struct stat file_stat;
-    if (0 > fstat(fd, &file_stat))
-    {
-        // error getting file stat
-    }
+    if (0 != fstat(fd, &file_stat))
+        return -1;
 
-    DEST_DIR_INODE_NUMBER = file_stat.st_ino;
+    DEST_DIR_INODE = file_stat.st_ino;
 
-    close(fd);
+    if (0 != close(fd))
+        return -1;
+
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -110,13 +110,19 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    Copy_Args copy_args;
-    copy_args.src_path = argv[1];
-    copy_args.dest_path = argv[2];
+    Copy_Args *copy_args = malloc(sizeof(Copy_Args));
+    copy_args->src_path = malloc(strlen(argv[1]) + 1);
+    strcpy(copy_args->src_path, argv[1]);
+    copy_args->dest_path = malloc(strlen(argv[2])+ 1);
+    strcpy(copy_args->dest_path, argv[2]);
 
-    init_dest_inode(copy_args.dest_path);
+    if (0 != set_dest_dir_inode(copy_args->dest_path))
+    {
+        perror("Process: Failed set 'DEST_DIR_INODE'");
+        exit(EXIT_FAILURE);
+    }
 
-    if (0 != pthread_create(&thread, NULL, copy_directory, &copy_args))
+    if (0 != pthread_create(&thread, NULL, copy_directory, copy_args))
     {
         perror("Process: Failed to create thread");
         exit(EXIT_FAILURE);
