@@ -3,4 +3,4 @@ build:
 	gcc ./src/* -pthread -o ./out/a.out
 
 run:
-	./out/a.out ./
+	./out/a.out ~/Documents ./out/documents_copy
