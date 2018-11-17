@@ -18,6 +18,7 @@ typedef struct
 } Calc_Pi_Args;
 
 int terminate_flag = 0;
+pthread_mutex_t mutex;
 
 void *calulate_pi_row(void *Calc_Pi_Args_raw)
 {
@@ -32,8 +33,15 @@ void *calulate_pi_row(void *Calc_Pi_Args_raw)
     {
         result += 1.0 / (n * 4.0 + 1.0);
         result -= 1.0 / (n * 4.0 + 3.0);
-        if (terminate_flag)
-            break;
+
+        if ((n / 10000) % 2)
+        {
+            pthread_mutex_lock(&mutex);
+            int termimate_flag_copy = terminate_flag;
+            pthread_mutex_unlock(&mutex);
+            if (termimate_flag_copy)
+                break;
+        }
     }
     printf("%s[Child#%u] Returning sum (%e)..\n",
            CHILD_COLOR, args->thread_id, result);
@@ -44,8 +52,10 @@ void *calulate_pi_row(void *Calc_Pi_Args_raw)
 
 void of_sigint_received(int arg)
 {
+    pthread_mutex_lock(&mutex);
     terminate_flag = 1;
     printf("%s[Parent] received SIGINT!\n", PARENT_COLOR);
+    pthread_mutex_unlock(&mutex);
 }
 
 int main(int argc, char *argv[])
@@ -75,6 +85,12 @@ int main(int argc, char *argv[])
     if (SIG_ERR == signal(SIGINT, of_sigint_received))
     {
         fprintf(stderr, "%sFailed to set SIGINT handler!\n", ERROR_COLOR);
+        exit(EXIT_FAILURE);
+    }
+
+    if (0 != pthread_mutex_init(&mutex, NULL))
+    {
+        fprintf(stderr, "%sFailed to create mutex!\n", ERROR_COLOR);
         exit(EXIT_FAILURE);
     }
 
@@ -115,6 +131,7 @@ int main(int argc, char *argv[])
     result *= 4;
     printf("%s[Parent] Pi=%e.\n", PARENT_COLOR, result);
 
+    pthread_mutex_destroy(&mutex);
     free(pi_args);
     exit(EXIT_SUCCESS);
 }
