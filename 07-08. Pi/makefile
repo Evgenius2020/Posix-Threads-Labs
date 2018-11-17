@@ -3,4 +3,4 @@ build:
 	gcc ./src/main.c -pthread -o ./out/a.out
 
 run:
-	./out/a.out 3 10
+	./out/a.out 4 1000000

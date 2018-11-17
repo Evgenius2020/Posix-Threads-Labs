@@ -1,11 +1,12 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-char *CHILD_COLOR = "\x1b[35m";
+char *CHILD_COLOR = "\x1b[35;1m";
 char *PARENT_COLOR = "\x1b[36;1m";
-char *ERROR_COLOR = "\x1b[31m";
+char *ERROR_COLOR = "\x1b[31;1m";
 
 typedef struct
 {
@@ -16,19 +17,23 @@ typedef struct
     pthread_t thread;
 } Calc_Pi_Args;
 
+int terminate_flag = 0;
+
 void *calulate_pi_row(void *Calc_Pi_Args_raw)
 {
     double result = 0;
     Calc_Pi_Args *args = Calc_Pi_Args_raw;
 
-    printf("%s[Child#%u] Started a sum routine for ..\n",
+    printf("%s[Child#%u] Started a sum routine..\n",
            CHILD_COLOR, args->thread_id);
-    for (unsigned n = args->thread_id;
-         (n < args->limit) || (args->limit == -1);
+    for (int n = args->thread_id;
+         (args->limit == -1) || (n < args->limit);
          n += args->threads_n)
     {
         result += 1.0 / (n * 4.0 + 1.0);
         result -= 1.0 / (n * 4.0 + 3.0);
+        if (terminate_flag)
+            break;
     }
     printf("%s[Child#%u] Returning sum (%e)..\n",
            CHILD_COLOR, args->thread_id, result);
@@ -37,11 +42,17 @@ void *calulate_pi_row(void *Calc_Pi_Args_raw)
     pthread_exit(args);
 }
 
+void of_sigint_received(int arg)
+{
+    terminate_flag = 1;
+    printf("%s[Parent] received SIGINT!\n", PARENT_COLOR);
+}
+
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
+    if ((argc < 2) || (argc > 3))
     {
-        fprintf(stderr, "%sUsage: %s [treads] [row_members=infinity].\n",
+        fprintf(stderr, "%sUsage: %s [treads] [row_members=-1(infinity)].\n",
                 ERROR_COLOR, argv[0]);
         exit(EXIT_FAILURE);
     }
@@ -51,10 +62,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%sNumber of threads must be greater than 0!\n", ERROR_COLOR);
         exit(EXIT_FAILURE);
     }
-    int limit = atoi(argv[2]);
-    if (limit < 0)
+    int limit = -1;
+    if (argc == 3)
     {
-        fprintf(stderr, "%sNumber of row numbers must be non-negative!\n", ERROR_COLOR);
+        limit = atoi(argv[2]);
+        if (limit < 0)
+        {
+            fprintf(stderr, "%sNumber of row numbers must be non-negative!\n", ERROR_COLOR);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (SIG_ERR == signal(SIGINT, of_sigint_received))
+    {
+        fprintf(stderr, "%sFailed to set SIGINT handler!\n", ERROR_COLOR);
         exit(EXIT_FAILURE);
     }
 
