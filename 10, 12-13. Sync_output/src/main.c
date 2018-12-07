@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define PRRINT_TIMES 5
+#define PRINT_TIMES 5
 
 #if defined MUTEX
 #include "mutex.c"
@@ -23,7 +23,7 @@ void dispose_sync_primitives();
 
 void *print_child(void *arg)
 {
-	for (int j = 0; j < PRRINT_TIMES; j++)
+	for (int j = 0; j < PRINT_TIMES; j++)
 	{
 		child_lock();
 
@@ -44,7 +44,7 @@ void *print_child(void *arg)
 
 void print_parent()
 {
-	for (int j = 0; j < PRRINT_TIMES; j++)
+	for (int j = 0; j < PRINT_TIMES; j++)
 	{
 
 		printf("%s[Parent]: ", PARENT_COLOR);
