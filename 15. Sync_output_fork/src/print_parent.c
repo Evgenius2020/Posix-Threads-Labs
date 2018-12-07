@@ -3,15 +3,13 @@
 
 void print_parent()
 {
-	sem_t parent;
-	sem_t child;
+	sem_t* parent;
+	sem_t* child;
 	open_semaphores(&parent, &child);
 
 	for (int j = 0; j < PRINT_TIMES; j++)
 	{
-		if (0 != sem_wait(&parent)) {
-			perror("wit");
-		}
+		sem_wait(parent);
 
 		printf("%s[Parent]: ", PARENT_COLOR);
 		for (int i = 0; i < 10; i++)
@@ -22,8 +20,6 @@ void print_parent()
 		}
 		printf("\n");
 
-		sem_post(&child);
+		sem_post(child);
 	}
-
-	exit(EXIT_SUCCESS);
 }

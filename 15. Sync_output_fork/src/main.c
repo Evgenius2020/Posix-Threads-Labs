@@ -12,10 +12,10 @@ void delete_semaphores()
 {
 	int parent_close_status = sem_unlink(SEM_PARENT_LINK);
 	int child_close_status = sem_unlink(SEM_CHILD_LINK);
-	if (((0 != parent_close_status) &&
-		 (ENOENT != errno)) ||
-		((0 != child_close_status) &&
-		 (ENOENT != errno)))
+	if ((0 != parent_close_status &&
+		 ENOENT != errno) ||
+		(0 != child_close_status &&
+		 ENOENT != errno))
 	{
 		fprintf(stderr, "%s\nFailed to sem_unlink\n", ERROR_COLOR);
 		perror("");
@@ -25,8 +25,8 @@ void delete_semaphores()
 
 void init_semaphores(sem_t *parent, sem_t *child)
 {
-	parent = sem_open(SEM_PARENT_LINK, O_CREAT, 0666, 0);
-	child = sem_open(SEM_CHILD_LINK, O_CREAT, 0666, 0);
+	parent = sem_open(SEM_PARENT_LINK, O_CREAT | O_EXCL, 0666, 1);
+	child = sem_open(SEM_CHILD_LINK, O_CREAT | O_EXCL, 0666, 0);
 
 	if (parent == SEM_FAILED || child == SEM_FAILED)
 	{
