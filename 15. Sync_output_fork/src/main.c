@@ -3,6 +3,7 @@
 #include "shared.h"
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <wait.h>
 
 void print_child();
@@ -23,10 +24,12 @@ void delete_semaphores()
 	}
 }
 
+#define FLAGS S_IRWXU | S_IRWXG | S_IRWXO
+
 void init_semaphores(sem_t *parent, sem_t *child)
 {
-	parent = sem_open(SEM_PARENT_LINK, O_CREAT | O_EXCL, 0666, 1);
-	child = sem_open(SEM_CHILD_LINK, O_CREAT | O_EXCL, 0666, 0);
+	parent = sem_open(SEM_PARENT_LINK, O_CREAT | O_EXCL, FLAGS, 1);
+	child = sem_open(SEM_CHILD_LINK, O_CREAT | O_EXCL, FLAGS, 0);
 
 	if (parent == SEM_FAILED || child == SEM_FAILED)
 	{
@@ -48,13 +51,15 @@ int main()
 
 	if (0 == fork())
 		print_child();
-
-	print_parent();
-	if (wait(NULL) == -1)
+	else
 	{
-		fprintf(stderr, "%s\nFailed to wait child process\n", ERROR_COLOR);
-		perror("");
-		exit(EXIT_FAILURE);
+		print_parent();
+		if (wait(NULL) == -1)
+		{
+			fprintf(stderr, "%s\nFailed to wait child process\n", ERROR_COLOR);
+			perror("");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	exit(EXIT_SUCCESS);

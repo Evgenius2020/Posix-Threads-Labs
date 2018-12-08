@@ -22,6 +22,4 @@ void print_child()
 
         sem_post(parent);
     }
-
-    exit(EXIT_SUCCESS);
 }
