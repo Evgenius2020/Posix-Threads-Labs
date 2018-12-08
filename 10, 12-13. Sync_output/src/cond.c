@@ -1,20 +1,36 @@
 #include "console_colors.h"
+#include "error_check_mutex.c"
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 bool is_child_turn;
 
 void initialize_sync_primitives()
 {
-    is_child_turn = false;
+    mutex = init_mutex();
 }
+
+void parent_prelock()
+{
+    is_child_turn = false;
+    try_lock_mutex(&mutex);
+}
+
+void parent_postunlock()
+{
+    try_unlock_mutex(&mutex);
+}
+
+void child_prelock() {}
+void child_postunlock() {}
+
 void parent_lock()
 {
-    pthread_mutex_lock(&mutex);
+    try_lock_mutex(&mutex);
     while (is_child_turn)
         pthread_cond_wait(&cond, &mutex);
 }
@@ -23,12 +39,12 @@ void parent_unlock()
 {
     is_child_turn = true;
     pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
+    try_unlock_mutex(&mutex);
 }
 
 void child_lock()
 {
-    pthread_mutex_lock(&mutex);
+    try_lock_mutex(&mutex);
     while (!is_child_turn)
         pthread_cond_wait(&cond, &mutex);
 }
@@ -37,15 +53,10 @@ void child_unlock()
 {
     is_child_turn = false;
     pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
+    try_unlock_mutex(&mutex);
 }
 
 void dispose_sync_primitives()
 {
-    if (0 != pthread_mutex_destroy(&mutex))
-    {
-        fprintf(stderr, "%s\nFailed to destroy mutex\n", ERROR_COLOR);
-        perror("");
-        exit(EXIT_FAILURE);
-    }
+    try_destroy_mutex(&mutex);
 }

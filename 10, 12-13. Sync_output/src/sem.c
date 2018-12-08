@@ -10,9 +10,18 @@ void initialize_sync_primitives()
 {
     sem_init(&parent, 0, 1);
     sem_init(&child, 0, 1);
+}
+
+void parent_prelock()
+{
     sem_wait(&parent);
     sem_wait(&child);
 }
+
+void parent_postunlock() {}
+
+void child_prelock() {}
+void child_postunlock() {}
 
 void parent_lock()
 {
