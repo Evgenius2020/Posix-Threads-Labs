@@ -24,6 +24,8 @@ void start_strings_appending_routine()
 			perror("");
 			exit(EXIT_FAILURE);
 		}
+		if (strcmp(line, ".\n") == 0)
+			break;
 
 		errorcheck_mutex_try_lock(&list_access_mutex);
 
@@ -31,11 +33,13 @@ void start_strings_appending_routine()
 		{
 			printf("%s[Parent] Printing list...\n", PARENT_COLOR);
 			list_print(list_head);
+			printf("%s[Parent] Printing list complete!%s\n", PARENT_COLOR, NORMAL_COLOR);
 		}
 		else
 		{
+			line[strlen(line) - 1] = '\0';
 			list_head = list_add_node(list_head, line);
-			printf("%s[Parent] Inserted into list value %s", PARENT_COLOR, line);
+			printf("%s[Parent] Inserted '%s'%s\n", PARENT_COLOR, line, NORMAL_COLOR);
 		}
 
 		errorcheck_mutex_try_unlock(&list_access_mutex);
@@ -67,19 +71,12 @@ void *sort_list()
 	}
 }
 
-void destroy_list()
-{
-	list_destroy(list_head);
-	exit(EXIT_SUCCESS);
-}
-
 int main()
 {
 	list_head = NULL;
 	list_access_mutex = errorcheck_mutex_init();
 
 	pthread_t thread;
-	atexit(destroy_list);
 	if (0 != pthread_create(&thread, NULL, sort_list, NULL))
 	{
 		fprintf(stderr, "%s[Parent] Failed to create thread!\n", ERROR_COLOR);
@@ -88,4 +85,21 @@ int main()
 	}
 
 	start_strings_appending_routine();
+	if (0 != pthread_cancel(thread))
+	{
+		fprintf(stderr, "%s[Parent] Failed to cancel thread\n", ERROR_COLOR);
+		exit(EXIT_FAILURE);
+	}
+	printf("%s[Parent] Stoped a thread!\n", PARENT_COLOR);
+	if (0 != pthread_join(thread, NULL))
+	{
+		fprintf(stderr, "%s[Parent] Failed to join thread\n", ERROR_COLOR);
+		exit(EXIT_FAILURE);
+	}
+	printf("%s[Parent] Joined a thread!\n", PARENT_COLOR);
+
+	errorcheck_mutex_try_destroy(&list_access_mutex);
+	list_destroy(list_head);
+
+	exit(EXIT_SUCCESS);
 }

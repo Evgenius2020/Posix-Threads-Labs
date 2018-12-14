@@ -26,7 +26,7 @@ void list_print(node *head)
 {
 	while (head)
 	{
-		printf("%s", head->value);
+		printf("%s\n", head->value);
 		head = head->next;
 	}
 }
