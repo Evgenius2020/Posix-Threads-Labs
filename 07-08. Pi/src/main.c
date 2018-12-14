@@ -50,7 +50,7 @@ void *calulate_pi_row(void *Calc_Pi_Args_raw)
     pthread_exit(args);
 }
 
-void of_sigint_received(int arg)
+void on_sigint_received(int arg)
 {
     pthread_mutex_lock(&mutex);
     terminate_flag = 1;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
-    if (SIG_ERR == signal(SIGINT, of_sigint_received))
+    if (SIG_ERR == signal(SIGINT, on_sigint_received))
     {
         fprintf(stderr, "%sFailed to set SIGINT handler!\n", ERROR_COLOR);
         exit(EXIT_FAILURE);
