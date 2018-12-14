@@ -1,5 +1,6 @@
-#include "error_check_mutex.c"
+#include "console_colors.h"
 #include "list.h"
+#include "list_access.c"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,6 @@
 #define MAX_LINE_SIZE 80
 #define SORT_THREAD_SLEEP_INTERVAL 5
 
-pthread_mutex_t list_access_mutex;
 node *list_head;
 
 void start_strings_appending_routine()
@@ -27,22 +27,21 @@ void start_strings_appending_routine()
 		if (strcmp(line, ".\n") == 0)
 			break;
 
-		errorcheck_mutex_try_lock(&list_access_mutex);
-
 		if (line[0] == '\n')
 		{
+			list_access_readlock();
 			printf("%s[Parent] Printing list...\n", PARENT_COLOR);
 			list_print(list_head);
 			printf("%s[Parent] Printing list complete!%s\n", PARENT_COLOR, NORMAL_COLOR);
 		}
 		else
 		{
+			list_access_writelock();
 			line[strlen(line) - 1] = '\0';
 			list_head = list_add_node(list_head, line);
 			printf("%s[Parent] Inserted '%s'%s\n", PARENT_COLOR, line, NORMAL_COLOR);
 		}
-
-		errorcheck_mutex_try_unlock(&list_access_mutex);
+		list_access_unlock();
 	}
 }
 
@@ -53,7 +52,7 @@ void *sort_list()
 		sleep(SORT_THREAD_SLEEP_INTERVAL);
 
 		printf("%s[Child] Sorting list...\n", CHILD_COLOR);
-		errorcheck_mutex_try_lock(&list_access_mutex);
+		list_access_writelock();
 
 		node *i, *j;
 		char *buf;
@@ -66,7 +65,7 @@ void *sort_list()
 					j->value = buf;
 				}
 
-		errorcheck_mutex_try_unlock(&list_access_mutex);
+		list_access_unlock();
 		printf("%s[Child] Sorting list complete!%s\n", CHILD_COLOR, NORMAL_COLOR);
 	}
 }
@@ -74,7 +73,7 @@ void *sort_list()
 int main()
 {
 	list_head = NULL;
-	list_access_mutex = errorcheck_mutex_init();
+	list_access_init();
 
 	pthread_t thread;
 	if (0 != pthread_create(&thread, NULL, sort_list, NULL))
@@ -98,8 +97,7 @@ int main()
 	}
 	printf("%s[Parent] Joined a thread!\n", PARENT_COLOR);
 
-	errorcheck_mutex_try_destroy(&list_access_mutex);
-	list_destroy(list_head);
+	list_access_destroy();
 
 	exit(EXIT_SUCCESS);
 }
