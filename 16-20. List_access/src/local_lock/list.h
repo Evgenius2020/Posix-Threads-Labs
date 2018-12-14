@@ -2,12 +2,13 @@
 #define LIST
 
 #include <pthread.h>
+#include "list_access.c"
 
 typedef struct Node
 {
 	char *value;
 	struct Node *next;
-	pthread_rwlock_t rwlock;
+	list_access_type list_access;
 } Node;
 
 Node *list_add_node(Node *last, char *value);

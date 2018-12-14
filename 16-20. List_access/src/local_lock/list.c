@@ -1,6 +1,5 @@
 #include "list.h"
 #include "../console_colors.h"
-#include "../rwlock.c"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +14,9 @@ Node *list_add_node(Node *head, char *value)
 	new_node->next = head;
 	if (head)
 	{
-		rwlock_try_rdlock(&head->rwlock);
+		list_access_readlock(&head->list_access);
 		new_node->next = head;
-		rwlock_try_unlock(&head->rwlock);
+		list_access_unlock(&head->list_access);
 	}
 	else
 		new_node->next = head;
@@ -27,16 +26,16 @@ Node *list_add_node(Node *head, char *value)
 
 int list_cmp(Node *left, Node *right)
 {
-	rwlock_try_rdlock(&left->rwlock);
-	rwlock_try_rdlock(&right->rwlock);
+	list_access_readlock(&left->list_access);
+	list_access_readlock(&right->list_access);
 
 	printf("%s[Child] Comparing '%s' with '%s'...%s\n",
 		   CHILD_COLOR, left->value, right->value, NORMAL_COLOR);
 	sleep(COMPARE_PROCESSING_DELAY);
 	int result = strcmp(left->value, right->value);
 
-	rwlock_try_unlock(&left->rwlock);
-	rwlock_try_unlock(&right->rwlock);
+	list_access_unlock(&left->list_access);
+	list_access_unlock(&right->list_access);
 
 	return result;
 }
@@ -45,19 +44,19 @@ void list_swap(Node *prev, Node *curr, Node *next)
 {
 	if (prev)
 	{
-		rwlock_try_rdlock(&prev->rwlock);
+		list_access_writelock(&prev->list_access);
 		prev->next = next;
-		rwlock_try_unlock(&prev->rwlock);
+		list_access_unlock(&prev->list_access);
 	}
-	
-	rwlock_try_wrlock(&curr->rwlock);
-	rwlock_try_wrlock(&next->rwlock);
+
+	list_access_writelock(&curr->list_access);
+	list_access_writelock(&next->list_access);
 
 	curr->next = next->next;
 	next->next = curr;
 
-	rwlock_try_unlock(&curr->rwlock);
-	rwlock_try_unlock(&next->rwlock);
+	list_access_unlock(&curr->list_access);
+	list_access_unlock(&next->list_access);
 
 	printf("%s[Child] Swapped '%s' with '%s'!%s\n",
 		   CHILD_COLOR, curr->value, next->value, NORMAL_COLOR);
@@ -70,7 +69,7 @@ void list_destroy(Node *head)
 	{
 		buf = head;
 		head = head->next;
-		rwlock_try_destroy(&head->rwlock);
+		list_access_destroy(&head->list_access);
 		free(buf->value);
 		free(buf);
 	}
@@ -80,9 +79,9 @@ void list_print(Node *head)
 {
 	while (head)
 	{
-		rwlock_try_rdlock(&head->rwlock);
+		list_access_readlock(&head->list_access);
 		printf("%s\n", head->value);
-		rwlock_try_unlock(&head->rwlock);
+		list_access_unlock(&head->list_access);
 		head = head->next;
 	}
 }

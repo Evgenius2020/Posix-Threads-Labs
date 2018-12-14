@@ -29,7 +29,7 @@ pthread_rwlock_t list_access_rwlock;
 #include "../rwlock.c"
 void list_access_init()
 {
-    rwlock_try_init(&list_access_rwlock);
+    list_access_rwlock = rwlock_try_init();
     printf("RWLOCK implementation initilalized!\n");
 }
 void list_access_readlock()

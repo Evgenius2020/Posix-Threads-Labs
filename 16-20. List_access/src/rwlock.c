@@ -3,14 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void rwlock_try_init(pthread_rwlock_t *rwlock)
+pthread_rwlock_t rwlock_try_init()
 {
-    if (0 != pthread_rwlock_init(rwlock, NULL))
+    pthread_rwlock_t rwlock;
+    if (0 != pthread_rwlock_init(&rwlock, NULL))
     {
         fprintf(stderr, "%s\nFailed to init rwlock\n", ERROR_COLOR);
         perror("");
         exit(EXIT_FAILURE);
     }
+
+    return rwlock;
 }
 
 void rwlock_try_rdlock(pthread_rwlock_t *rwlock)
