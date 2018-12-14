@@ -1,4 +1,4 @@
-#include "console_colors.h"
+#include "../console_colors.h"
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>

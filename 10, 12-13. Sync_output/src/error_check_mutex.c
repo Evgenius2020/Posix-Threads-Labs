@@ -1,6 +1,9 @@
+#include "console_colors.h"
+#include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-void try_lock_mutex(pthread_mutex_t *mutex)
+void errorcheck_mutex_try_lock(pthread_mutex_t *mutex)
 {
     if (0 != pthread_mutex_lock(mutex))
     {
@@ -9,7 +12,7 @@ void try_lock_mutex(pthread_mutex_t *mutex)
     }
 }
 
-void try_unlock_mutex(pthread_mutex_t *mutex)
+void errorcheck_mutex_try_unlock(pthread_mutex_t *mutex)
 {
     if (0 != pthread_mutex_unlock(mutex))
     {
@@ -18,7 +21,7 @@ void try_unlock_mutex(pthread_mutex_t *mutex)
     }
 }
 
-pthread_mutex_t init_mutex()
+pthread_mutex_t errorcheck_mutex_init()
 {
     pthread_mutex_t mutex;
     pthread_mutexattr_t attrs;
@@ -29,7 +32,7 @@ pthread_mutex_t init_mutex()
     return mutex;
 }
 
-void try_destroy_mutex(pthread_mutex_t *mutex)
+void errorcheck_mutex_try_destroy(pthread_mutex_t *mutex)
 {
     if (0 != pthread_mutex_destroy(mutex))
     {

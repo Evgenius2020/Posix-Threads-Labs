@@ -7,11 +7,11 @@
 #define PRINT_TIMES 4
 
 #if defined MUTEX
-#include "mutex.c"
+#include "implementations/mutex.c"
 #elif defined COND
-#include "cond.c"
+#include "implementations/cond.c"
 #elif defined SEM
-#include "sem.c"
+#include "implementations/sem.c"
 #endif
 
 void initialize_sync_primitives();
