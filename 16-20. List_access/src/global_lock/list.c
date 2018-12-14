@@ -2,17 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-node *list_add_node(node *last, char *value)
+Node *list_add_node(Node *head, char *value)
 {
-	node *new_node = (node *)malloc(sizeof(node));
+	Node *new_node = (Node *)malloc(sizeof(Node));
 	new_node->value = value;
-	new_node->next = last;
+	new_node->next = head;
 	return new_node;
 }
 
-void list_destroy(node *head)
+void list_destroy(Node *head)
 {
-	node *buf;
+	Node *buf;
 	while (head)
 	{
 		buf = head;
@@ -22,7 +22,7 @@ void list_destroy(node *head)
 	}
 }
 
-void list_print(node *head)
+void list_print(Node *head)
 {
 	while (head)
 	{

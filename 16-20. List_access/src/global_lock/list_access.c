@@ -1,7 +1,7 @@
 #include <pthread.h>
 
 #ifndef RWLOCK
-#include "error_check_mutex.c"
+#include "../error_check_mutex.c"
 pthread_mutex_t list_access_mutex;
 void list_access_init()
 {
@@ -26,7 +26,7 @@ void list_access_destroy()
 }
 #else
 pthread_rwlock_t list_access_rwlock;
-#include "rwlock.c"
+#include "../rwlock.c"
 void list_access_init()
 {
     rwlock_try_init(&list_access_rwlock);

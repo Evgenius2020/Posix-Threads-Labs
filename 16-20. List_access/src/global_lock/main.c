@@ -1,6 +1,9 @@
-#include "console_colors.h"
+#include "../console_colors.h"
+#ifndef LOCAL_LOCK
 #include "list.h"
 #include "list_access.c"
+#include "list.c"
+#endif
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +13,7 @@
 #define MAX_LINE_SIZE 80
 #define SORT_THREAD_SLEEP_INTERVAL 5
 
-node *list_head;
+Node *list_head;
 
 void start_strings_appending_routine()
 {
@@ -54,7 +57,7 @@ void *sort_list()
 		printf("%s[Child] Sorting list...\n", CHILD_COLOR);
 		list_access_writelock();
 
-		node *i, *j;
+		Node *i, *j;
 		char *buf;
 		for (i = list_head; i; i = i->next)
 			for (j = i->next; j; j = j->next)
