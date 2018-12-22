@@ -1,4 +1,4 @@
-#include "../console_app_tools.h"
+#include "console_app_tools.h"
 #include <pthread.h>
 
 void mutex_try_init(pthread_mutex_t *mutex)

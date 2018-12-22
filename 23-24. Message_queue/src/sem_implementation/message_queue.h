@@ -14,6 +14,7 @@ typedef struct
 {
 	Message *in, *out;
 	sem_t sem_put, sem_get;
+	pthread_mutex_t mutex_access;
 	unsigned char is_destroyed;
 	unsigned messages_limit;
 } Message_Queue;

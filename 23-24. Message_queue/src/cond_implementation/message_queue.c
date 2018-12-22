@@ -1,6 +1,6 @@
 #include "message_queue.h"
 #include "cond.h"
-#include "mutex.h"
+#include "../mutex.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,10 +93,9 @@ size_t message_queue_get(Message_Queue *queue, char *buffer, size_t buffer_lengt
 void message_queue_drop(Message_Queue *queue)
 {
 	queue->is_destroyed = 1;
-
 	cond_try_broadcast(&queue->cond_access);
-	mutex_try_lock(&queue->mutex_access);
 
+	mutex_try_lock(&queue->mutex_access);
 	Message *message = queue->in;
 	while (message)
 	{
@@ -104,7 +103,6 @@ void message_queue_drop(Message_Queue *queue)
 		free(message);
 		message = buf;
 	}
-
 	mutex_try_unlock(&queue->mutex_access);
 }
 

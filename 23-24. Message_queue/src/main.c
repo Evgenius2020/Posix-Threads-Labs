@@ -9,8 +9,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define PRODUCERS_COUNT 2
-#define CONSUMERS_COUNT 1
+#define PRODUCERS_COUNT 5
+#define CONSUMERS_COUNT 4
 #define PRODUCER_PUT_DELAY_SEC 2
 #define CONSUMER_GET_DELAY_SEC 4
 #define QUEUE_DROP_TIMING_SEC 20
@@ -46,7 +46,6 @@ void *producer_run()
 
 void *consumer_run()
 {
-	int mess_len = 0;
 	int id = get_thread_id();
 	char message_text_buf[STRING_LEN_LIMIT + 1];
 
