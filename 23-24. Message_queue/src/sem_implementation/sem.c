@@ -1,14 +1,5 @@
-#include "console_colors.h"
+#include "../console_app_tools.h"
 #include <semaphore.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-void throw_and_exit(char *call_name)
-{
-    fprintf(stderr, "%s\nFailed to %s\n", ERROR_COLOR, call_name);
-    perror("");
-    exit(EXIT_FAILURE);
-}
 
 void sem_try_init(sem_t *sem, int shared, int initial_value)
 {

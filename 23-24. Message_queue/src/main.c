@@ -1,6 +1,12 @@
-#include "console_colors.h"
-#include "message_queue.h"
+#ifdef SEM_IMPEMENTATION
+#include "sem_implementation/message_queue.h"
+#else
+#include "cond_implementation/message_queue.h"
+#endif
+
+#include "console_app_tools.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #define PRODUCERS_COUNT 2
@@ -8,6 +14,8 @@
 #define PRODUCER_PUT_DELAY_SEC 2
 #define CONSUMER_GET_DELAY_SEC 4
 #define QUEUE_DROP_TIMING_SEC 20
+#define MESSAGES_LIMIT 10
+
 pthread_t threads[PRODUCERS_COUNT + CONSUMERS_COUNT];
 Message_Queue queue;
 
@@ -54,13 +62,15 @@ void *consumer_run()
 
 int main()
 {
-	message_queue_init(&queue);
+	message_queue_init(&queue, MESSAGES_LIMIT);
 	printf("%s[PARENT] Init\n", PARENT_COLOR);
 
 	for (int i = 0; i < PRODUCERS_COUNT; i++)
-		pthread_create(&threads[i], NULL, producer_run, NULL);
+		if (pthread_create(&threads[i], NULL, producer_run, NULL))
+			throw_and_exit("pthread_create");
 	for (int i = PRODUCERS_COUNT; i < PRODUCERS_COUNT + CONSUMERS_COUNT; i++)
-		pthread_create(&threads[i], NULL, consumer_run, NULL);
+		if (pthread_create(&threads[i], NULL, consumer_run, NULL))
+			throw_and_exit("pthread_create");
 
 	sleep(QUEUE_DROP_TIMING_SEC);
 
@@ -68,11 +78,7 @@ int main()
 	printf("%s[PARENT] Drop\n", PARENT_COLOR);
 	for (int i = 0; i < PRODUCERS_COUNT + CONSUMERS_COUNT; i++)
 		if (pthread_join(threads[i], NULL))
-		{
-			fprintf(stderr, "%s\nFailed to pthread_join\n", ERROR_COLOR);
-			perror("");
-			exit(EXIT_FAILURE);
-		}
+			throw_and_exit("pthread_join");
 	message_queue_destroy(&queue);
 	printf("%s[PARENT] Destroy\n", PARENT_COLOR);
 	exit(EXIT_SUCCESS);

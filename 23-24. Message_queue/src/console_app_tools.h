@@ -15,4 +15,6 @@ char *MAGENTA_COLOR;
 char *CYAN_COLOR;
 char *WHITE_COLOR;
 
+void throw_and_exit(char *call_name);
+
 #endif

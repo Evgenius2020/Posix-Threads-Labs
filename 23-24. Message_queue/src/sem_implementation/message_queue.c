@@ -2,12 +2,12 @@
 #include "sem.h"
 #include <string.h>
 
-void message_queue_init(Message_Queue *queue)
+void message_queue_init(Message_Queue *queue, unsigned messages_limit)
 {
 	queue->in = NULL;
 	queue->out = NULL;
 	queue->is_destroyed = 0;
-	sem_try_init(&queue->sem_put, 0, MESSAGES_LIMIT);
+	sem_try_init(&queue->sem_put, 0, messages_limit);
 	sem_try_init(&queue->sem_get, 0, 0);
 }
 
@@ -66,6 +66,7 @@ size_t message_queue_get(Message_Queue *queue, char *buffer, size_t buffer_lengt
 	buffer[buffer_length - 1] = '\0';
 	free(message);
 	sem_try_post(&queue->sem_put);
+	
 	return strlen(buffer);
 }
 

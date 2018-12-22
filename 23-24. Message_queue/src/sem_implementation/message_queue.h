@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 #define STRING_LEN_LIMIT 80
-#define MESSAGES_LIMIT 3
 
 typedef struct Message
 {
@@ -16,9 +15,10 @@ typedef struct
 	Message *in, *out;
 	sem_t sem_put, sem_get;
 	unsigned char is_destroyed;
+	unsigned messages_limit;
 } Message_Queue;
 
-void message_queue_init(Message_Queue *queue);
+void message_queue_init(Message_Queue *queue, unsigned messages_limit);
 size_t message_queue_put(Message_Queue *queue, char *text);
 size_t message_queue_get(Message_Queue *queue, char *buffer, size_t buffer_length);
 void message_queue_drop(Message_Queue *queue);
