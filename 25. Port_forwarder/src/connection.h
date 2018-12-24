@@ -1,3 +1,6 @@
+#ifndef CONNECTION
+#define CONNECTION
+
 #include <netinet/in.h>
 #include <time.h>
 
@@ -15,11 +18,7 @@ typedef struct Connection
 	time_t last_update;
 } Connection;
 
-typedef struct
-{
-	Connection *first;
-	Connection *last;
-} Connection_List;
+Connection *connection_create(int client_fd, int backend_fd, Connection **connections);
+void connection_drop(Connection *connection, Connection **connections);
 
-Connection *connection_create(int client_fd, int backend_fd, Connection_List *connections);
-void connection_drop(Connection *connection, Connection_List* connections);
+#endif

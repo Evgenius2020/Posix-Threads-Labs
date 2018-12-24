@@ -1,30 +1,29 @@
 #include "connection.h"
 #include "console_app_tools.h"
 #include <netdb.h>
-#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
-#define NO_UPDATE_LIMIT_SEC 600
-
 int frontend_fd;
-int fd_max = 0;
+int max_fd = 0;
+int is_disposed = 0;
 struct addrinfo *backend_ai;
-Connection_List connections;
+Connection *connections;
 
-int update_fd_max(int fd)
+// select_loop.c
+// Updating select mask and select processing.
+void select_loop(Connection **connections,
+				 int frontend_fd, void (*on_client_connect)(), int max_fd);
+
+int update_max_fd(int fd)
 {
 	if (fd >= FD_SETSIZE)
 		return -1;
-	if (fd > fd_max)
-		fd_max = fd;
+	if (fd > max_fd)
+		max_fd = fd;
 	return 0;
 }
 
@@ -38,62 +37,41 @@ void getaddrinfo_or_except(char *url, char *port, struct addrinfo *hints, struct
 	}
 }
 
-void set_select_mask(fd_set *readfds, fd_set *writefds)
+int get_socket_fd_or_except(struct addrinfo *ai,
+							int (*bind_or_connect)(int, const struct sockaddr *, socklen_t))
 {
-	Connection *connection;
-	connection = connections.first;
-	FD_ZERO(readfds);
-	FD_ZERO(writefds);
-	FD_SET(frontend_fd, readfds);
-
-	while (connection)
+	while (1)
 	{
-		time_t time_now = time(&time_now);
-		if (-1 == time_now)
-			throw_and_exit("time");
-
-		if (connection->cnt_cs <= 0 && connection->cnt_sc <= 0)
-			connection_drop(connection, &connections);
-		else if (time_now - connection->last_update > NO_UPDATE_LIMIT_SEC)
-			connection_drop(connection, &connections);
-		else
-		{
-			if (connection->cnt_cs == 0)
-				FD_SET(connection->client_fd, readfds);
-			if (connection->cnt_sc == 0)
-				FD_SET(connection->backend_fd, readfds);
-			if (connection->cnt_cs > 0)
-				FD_SET(connection->backend_fd, writefds);
-			if (connection->cnt_sc > 0)
-				FD_SET(connection->client_fd, writefds);
-		}
-		connection = connection->next;
-	}
-}
-
-int get_socket_fd_or_except(struct addrinfo *ai, 
-	int (*bind_or_connect)(int, const struct sockaddr*, socklen_t))
-{
-	int fd;
-	struct addrinfo *ai_buf;
-	for (ai_buf = ai; ai_buf; ai_buf = ai_buf->ai_next)
-	{
-		fd = socket(ai_buf->ai_family, ai_buf->ai_socktype, ai_buf->ai_protocol);
+		if (!ai)
+			throw_and_exit("get_socket_fd");
+		int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 		if (-1 == fd)
 			continue;
 
-		if (!bind_or_connect(fd, ai_buf->ai_addr, ai_buf->ai_addrlen))
-			break;
+		if (!bind_or_connect(fd, ai->ai_addr, ai->ai_addrlen))
+			return fd;
 		close(fd);
+		ai = ai->ai_next;
 	}
-	if (!ai_buf)
-		throw_and_exit("get_socket_fd");
+}
 
-	return fd;
+void on_client_connect()
+{
+	int client_fd = accept(frontend_fd, NULL, NULL);
+	if (-1 == client_fd)
+		throw_and_exit("accept");
+	if (update_max_fd(client_fd))
+		throw_and_exit("update_max_fd");
+	int backend_fd = get_socket_fd_or_except(backend_ai, connect);
+	if (!connection_create(client_fd, backend_fd, &connections))
+		throw_and_exit("connection_create");
 }
 
 void at_close()
 {
+	if (is_disposed)
+		return;
+	is_disposed = 1;
 	freeaddrinfo(backend_ai);
 	close(frontend_fd);
 }
@@ -115,6 +93,8 @@ int main(int argc, char *argv[])
 	char *backend_url = argv[2];
 	char *backend_port = argv[3];
 
+	connections = NULL;
+
 	struct addrinfo hints, *frontend_ai;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -127,79 +107,11 @@ int main(int argc, char *argv[])
 	freeaddrinfo(frontend_ai);
 	if (listen(frontend_fd, SOMAXCONN))
 		throw_and_exit("listen");
-	if (update_fd_max(frontend_fd))
-		throw_and_exit("update_fd_max");
+	if (update_max_fd(frontend_fd))
+		throw_and_exit("update_max_fd");
+	printf("%sStarted listening\n", YELLOW_COLOR);
 
-	fd_set readfds, writefds;
-	int ready, read;
-	char buf[BUFSIZE];
-
-	while (1)
-	{
-		set_select_mask(&readfds, &writefds);
-		ready = select(fd_max + 1, &readfds, &writefds, NULL, NULL);
-
-		if (-1 == ready)
-			throw_and_exit("select");
-		else if (!ready)
-			continue;
-
-		for (Connection *connection = connections.first; connection; connection = connection->next)
-		{
-			// Client -> Frontend
-			if (connection->cnt_cs == 0 && FD_ISSET(connection->client_fd, &readfds))
-			{
-				connection->cnt_cs = recv(connection->client_fd, connection->data_cs, sizeof(connection->data_cs), 0);
-				connection->last_update = time(&(connection->last_update));
-				if (connection->cnt_cs == 0)
-					connection->cnt_cs = -1;
-			}
-
-			// Frontend -> Backend
-			if (connection->cnt_sc == 0 && FD_ISSET(connection->backend_fd, &readfds))
-			{
-				connection->cnt_sc = recv(connection->backend_fd, connection->data_sc, sizeof(connection->data_sc), 0);
-				connection->last_update = time(&(connection->last_update));
-				if (connection->cnt_sc == 0)
-					connection->cnt_sc = -1;
-			}
-
-			// Backend -> Frontend
-			if (connection->cnt_cs > 0 && FD_ISSET(connection->backend_fd, &writefds))
-			{
-				int res = send(connection->backend_fd, connection->data_cs, connection->cnt_cs, 0);
-				connection->last_update = time(&(connection->last_update));
-				if (res == -1)
-					connection->cnt_sc = -1;
-				else
-					connection->cnt_cs = 0;
-			}
-
-			// Backend -> Client
-			if (connection->cnt_sc > 0 && FD_ISSET(connection->client_fd, &writefds))
-			{
-				int res = send(connection->client_fd, connection->data_sc, connection->cnt_sc, 0);
-				connection->last_update = time(&(connection->last_update));
-				if (res == -1)
-					connection->cnt_cs = -1;
-				else
-					connection->cnt_sc = 0;
-			}
-		}
-
-		// Client connect
-		if (FD_ISSET(frontend_fd, &readfds))
-		{
-			int client_fd = accept(frontend_fd, NULL, NULL);
-			if (-1 == client_fd)
-				throw_and_exit("accept");
-			if (update_fd_max(client_fd))
-				throw_and_exit("update_fd_max");
-			int backend_fd = get_socket_fd_or_except(backend_ai, connect);
-			if (!connection_create(client_fd, backend_fd, &connections))
-				throw_and_exit("connection_create");
-		}
-	}
+	select_loop(&connections, frontend_fd, on_client_connect, max_fd);
 
 	exit(EXIT_SUCCESS);
 }
