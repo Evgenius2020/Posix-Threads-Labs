@@ -11,7 +11,6 @@ void receiving_routine(int socketfd);
 
 int main(int argc, char *argv[])
 {
-	int ret = 0;
 	if (argc != 2)
 	{
 		fprintf(stderr, "Usage: <URL>");
@@ -23,19 +22,16 @@ int main(int argc, char *argv[])
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-	ret = getaddrinfo(url, "http", &hints, &gai_res);
-	if (ret)
+	int gai_error = getaddrinfo(url, "http", &hints, &gai_res);
+	if (gai_error)
 	{
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(gai_error));
 		exit(EXIT_FAILURE);
 	}
 
 	int socketfd = socket(gai_res->ai_family, gai_res->ai_socktype, gai_res->ai_protocol);
 	if (socketfd < 0)
-	{
-		perror("socket");
-		exit(EXIT_FAILURE);
-	}
+		throw_and_exit("socket");
 
 	if (connect(socketfd, gai_res->ai_addr, gai_res->ai_addrlen))
 		throw_and_exit("connect");
@@ -50,7 +46,9 @@ int main(int argc, char *argv[])
 	write(socketfd, request_text, strlen(request_text));
 	printf("%sRequest has sent.\n", YELLOW_COLOR);
 
+    printf("%sReceiving response..%s\n", YELLOW_COLOR, WHITE_COLOR);
 	receiving_routine(socketfd);
+    printf("%sResponse has received.\n", GREEN_COLOR);
 
 	close(socketfd);
 	exit(EXIT_SUCCESS);

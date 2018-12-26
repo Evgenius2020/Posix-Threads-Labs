@@ -14,8 +14,6 @@ void receiving_routine(int socketfd)
     int buffer_bytes_count = 0;
     char is_socketfd_eof = 0;
 
-    printf("%sReceiving response..%s\n", YELLOW_COLOR, WHITE_COLOR);
-
     fd_set readfds, writefds;
     while (!is_socketfd_eof || buffer_bytes_count)
     {
@@ -31,8 +29,6 @@ void receiving_routine(int socketfd)
         int ready = select(socketfd + 1, &readfds, &writefds, NULL, NULL);
         if (-1 == ready)
             throw_and_exit("select");
-        else if (!ready)
-            continue;
 
         if (FD_ISSET(socketfd, &readfds))
         {
@@ -75,5 +71,4 @@ void receiving_routine(int socketfd)
                 lines_left = LINES_LEFT_DEFAULT;
         }
     }
-    printf("%sResponse has received.\n", GREEN_COLOR);
 }

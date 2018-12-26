@@ -16,5 +16,6 @@ char *CYAN_COLOR;
 char *WHITE_COLOR;
 
 void throw_and_exit(char *call_name);
+void throw_with_code_and_exit(char *call_name, int error_code);
 
 #endif
