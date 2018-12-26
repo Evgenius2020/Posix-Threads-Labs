@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 int frontend_fd;
-int max_fd = 0;
 int is_disposed = 0;
 struct addrinfo *backend_ai;
 Connection *connections;
@@ -16,16 +15,7 @@ Connection *connections;
 // select_loop.c
 // Updating select mask and select processing.
 void select_loop(Connection **connections,
-				 int frontend_fd, void (*on_client_connect)(), int max_fd);
-
-int update_max_fd(int fd)
-{
-	if (fd >= FD_SETSIZE)
-		return -1;
-	if (fd > max_fd)
-		max_fd = fd;
-	return 0;
-}
+				 int frontend_fd, void (*on_client_connect)());
 
 void getaddrinfo_or_except(char *url, char *port, struct addrinfo *hints, struct addrinfo **res)
 {
@@ -60,20 +50,19 @@ void on_client_connect()
 	int client_fd = accept(frontend_fd, NULL, NULL);
 	if (-1 == client_fd)
 		throw_and_exit("accept");
-	if (update_max_fd(client_fd))
-		throw_and_exit("update_max_fd");
 	int backend_fd = get_socket_fd_or_except(backend_ai, connect);
 	if (!connection_create(client_fd, backend_fd, &connections))
 		throw_and_exit("connection_create");
 }
 
-void at_close()
+void at_exit()
 {
 	if (is_disposed)
 		return;
 	is_disposed = 1;
 	freeaddrinfo(backend_ai);
 	close(frontend_fd);
+	printf("%sStopped listenning.\n", GREEN_COLOR);
 }
 
 int main(int argc, char *argv[])
@@ -84,10 +73,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	atexit(at_close);
+	atexit(at_exit);
 	signal(SIGPIPE, SIG_IGN);
-	signal(SIGINT, at_close);
-	signal(SIGTERM, at_close);
+	signal(SIGINT, at_exit);
+	signal(SIGTERM, at_exit);
 
 	char *frontend_port = argv[1];
 	char *backend_url = argv[2];
@@ -107,11 +96,9 @@ int main(int argc, char *argv[])
 	freeaddrinfo(frontend_ai);
 	if (listen(frontend_fd, SOMAXCONN))
 		throw_and_exit("listen");
-	if (update_max_fd(frontend_fd))
-		throw_and_exit("update_max_fd");
 	printf("%sStarted listening\n", YELLOW_COLOR);
 
-	select_loop(&connections, frontend_fd, on_client_connect, max_fd);
+	select_loop(&connections, frontend_fd, on_client_connect);
 
 	exit(EXIT_SUCCESS);
 }

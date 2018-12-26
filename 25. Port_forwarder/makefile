@@ -3,4 +3,4 @@ build:
 	gcc ./src/*.c  -pthread -o ./out/a.out
 
 run:
-	./out/a.out swsoft.nsu.ru
+	./out/a.out 1337 swsoft.nsu.ru 80
