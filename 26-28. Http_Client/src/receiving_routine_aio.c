@@ -1,4 +1,4 @@
-#include "console_app_tools.h"
+#include "lib/console_app_tools.h"
 #include <aio.h>
 #include <errno.h>
 #include <stdio.h>
@@ -42,7 +42,10 @@ void receiving_routine(int socketfd)
                 {
                     lines_left--;
                     if (!lines_left)
+                    {
+                        pos++;
                         break;
+                    }
                 }
             bytes_to_write = pos;
         }

@@ -1,4 +1,4 @@
-#include "console_app_tools.h"
+#include "lib/console_app_tools.h"
 #include <stdio.h>
 #include <string.h>
 #include <sys/select.h>
@@ -49,7 +49,10 @@ void receiving_routine(int socketfd)
                 {
                     lines_left--;
                     if (!lines_left)
+                    {
+                        pos++;
                         break;
+                    }
                 }
 
             if (write(STDOUT_FILENO, buffer, pos) < pos)

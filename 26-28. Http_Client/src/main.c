@@ -1,4 +1,4 @@
-#include "console_app_tools.h"
+#include "lib/console_app_tools.h"
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,9 +46,9 @@ int main(int argc, char *argv[])
 	write(socketfd, request_text, strlen(request_text));
 	printf("%sRequest has sent.\n", YELLOW_COLOR);
 
-    printf("%sReceiving response..%s\n", YELLOW_COLOR, WHITE_COLOR);
+	printf("%sReceiving response..%s\n", YELLOW_COLOR, WHITE_COLOR);
 	receiving_routine(socketfd);
-    printf("%sResponse has received.\n", GREEN_COLOR);
+	printf("%sResponse has received.\n", GREEN_COLOR);
 
 	close(socketfd);
 	exit(EXIT_SUCCESS);
