@@ -10,8 +10,13 @@ typedef struct Connection
 	unsigned id;
 	struct Connection *prev, *next;
 
-	char request[BUFSIZE];
-	int request_is_set;
+	char *request_url;
+	int request_url_is_set;
+	int is_bad_protocol;
+	int is_get_request;
+	int response_is_ok;
+	char *response_data;
+	size_t response_data_length;
 
 	int client_fd;
 	int backend_fd;
@@ -27,6 +32,8 @@ typedef struct Connection
 } Connection;
 
 Connection *connection_create(int client_fd, int backend_fd, Connection **connections);
+void connection_parse_request(Connection *connection);
+void connection_parse_response(Connection *connection);
 void connection_drop(Connection *connection, Connection **connections);
 
 #endif

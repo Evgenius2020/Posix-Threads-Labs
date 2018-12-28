@@ -31,7 +31,6 @@ void select_loop(Connection **connections,
 {
     fd_set readfds, writefds;
     time_t time_now;
-    struct timeval timeout;
 
     while (1)
     {
@@ -49,7 +48,18 @@ void select_loop(Connection **connections,
             if (connection->is_broken ||
                 time_now - connection->last_update > NO_UPDATE_LIMIT_SEC)
             {
-                Connection* buf = connection->next;
+                if (connection->is_broken)
+                    printf("%sDropped connection #%d\n", GREEN_COLOR, connection->id);
+                else
+                {
+                    if (connection->is_get_request)
+                    {
+                        connection_parse_response(connection);
+                        //if (connection->response_is_ok)
+                    }
+                    printf("%sClosed connection #%d\n", GREEN_COLOR, connection->id);
+                }
+                Connection *buf = connection->next;
                 connection_drop(connection, connections);
                 connection = buf;
             }
@@ -67,7 +77,7 @@ void select_loop(Connection **connections,
                 else
                     FD_SET(connection->backend_fd, &readfds);
 
-                connection = connection->next;                
+                connection = connection->next;
             }
         }
 
@@ -88,14 +98,11 @@ void select_loop(Connection **connections,
                          sizeof(connection->client_to_backend_bytes), 0);
                 connection->client_to_backend_bytes_count = bytes_received;
 
-                if (!connection->request_is_set)
+                if (!connection->request_url_is_set && !connection->is_bad_protocol)
                 {
-                    memcpy(connection->request,
-                           connection->client_to_backend_bytes, sizeof(connection->request));
-                    // METHOD url protocol -> METHOD url
-                    *strchr(strchr(connection->request, ' ') + 1, ' ') = '\0';
-                    printf("Connection %d: requested %s\n", connection->id, connection->request);
-                    connection->request_is_set = 1;
+                    connection_parse_request(connection);
+                    if (connection->is_get_request)
+                        continue;
                 }
 
                 if (bytes_received)
@@ -135,9 +142,25 @@ void select_loop(Connection **connections,
                     connection->is_broken = 1;
                     continue;
                 }
+
+                if (connection->is_get_request)
+                {
+                    connection->response_data = realloc(
+                        connection->response_data,
+                        connection->response_data_length +
+                            connection->backend_to_client_bytes_count);
+                    memcpy(
+                        connection->response_data + connection->response_data_length,
+                        connection->backend_to_client_bytes,
+                        connection->backend_to_client_bytes_count);
+                    connection->response_data_length +=
+                        connection->backend_to_client_bytes_count;
+                }
+
                 connection->backend_to_client_bytes_count = 0;
                 connection_is_updated = 1;
             }
+
             if (connection_is_updated)
                 time_or_expect(&connection->last_update);
         }
