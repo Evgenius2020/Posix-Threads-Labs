@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-#define BUFSIZE 8192
+#define BUFSIZE 1024
 
 typedef struct Connection
 {
@@ -27,6 +27,7 @@ typedef struct Connection
 	size_t backend_to_client_bytes_count;
 
 	int is_broken;
+	int is_loaded_from_cache;
 
 	time_t last_update;
 } Connection;

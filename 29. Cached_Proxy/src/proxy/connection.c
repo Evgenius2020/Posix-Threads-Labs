@@ -35,7 +35,9 @@ Connection *connection_create(int client_fd, int backend_fd, Connection **connec
 	new_connection->backend_to_client_bytes_count = 0;
 	new_connection->last_update = time(&(new_connection->last_update));
 	new_connection->id = backend_fd;
+
 	new_connection->is_broken = 0;
+	new_connection->is_loaded_from_cache = 0;
 
 	new_connection->prev = NULL;
 	new_connection->next = *connections;

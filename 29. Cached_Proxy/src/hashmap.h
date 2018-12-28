@@ -1,11 +1,11 @@
 #include <stdlib.h>
+#include <pthread.h>
 
-#define HASHMAP_ELEMENT_KEY_LENGTH 256
 #define HASHMAP_HASH_MAX 100
 
 typedef struct Hashmap_List_Element
 {
-    char key[HASHMAP_ELEMENT_KEY_LENGTH];
+    char* key;
     void *value;
     size_t value_size;
     struct Hashmap_List_Element *next;

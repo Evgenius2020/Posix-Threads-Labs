@@ -1,3 +1,4 @@
+#include "hashmap.h"
 #include "lib/console_app_tools.h"
 #include "proxy/connection.h"
 #include <netdb.h>
@@ -11,11 +12,12 @@ int frontend_fd;
 int is_disposed = 0;
 struct addrinfo *backend_ai;
 Connection *connections;
+Hashmap cache;
 
 // select_loop.c
 // Updating select mask and select processing.
 void select_loop(Connection **connections,
-				 int frontend_fd, void (*on_client_connect)());
+				 int frontend_fd, void (*on_client_connect)(), Hashmap* cache);
 
 void getaddrinfo_or_except(char *url, char *port, struct addrinfo *hints, struct addrinfo **res)
 {
@@ -90,6 +92,7 @@ int main(int argc, char *argv[])
 	char *backend_port = argv[3];
 
 	connections = NULL;
+	hashmap_init(&cache);
 
 	struct addrinfo hints, *frontend_ai;
 	memset(&hints, 0, sizeof(hints));
@@ -105,7 +108,7 @@ int main(int argc, char *argv[])
 		throw_and_exit("listen");
 	printf("%sStarted listening\n", YELLOW_COLOR);
 
-	select_loop(&connections, frontend_fd, on_client_connect);
+	select_loop(&connections, frontend_fd, on_client_connect, &cache);
 
 	exit(EXIT_SUCCESS);
 }
