@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define NO_UPDATE_LIMIT_SEC 5
-
 Hashmap *cache;
 pthread_mutex_t mutex;
 
@@ -26,7 +24,7 @@ void on_thread_stop(void *connection)
 
 void *connection_routine(void *connection_raw)
 {
-    char buf[1024];
+    char buf[2048];
     Connection *connection = (Connection *)connection_raw;
 
     pthread_cleanup_push(on_thread_stop, connection);
@@ -55,14 +53,17 @@ void *connection_routine(void *connection_raw)
             break;
     }
 
-    mutex_try_lock(&mutex);
-    Hashmap_List_Element *cache_page = hashmap_get(cache, connection->request_url);
-    mutex_try_unlock(&mutex);
-    if (connection->request_url_is_set && connection->is_get_request && cache_page)
+    if (connection->is_get_request)
     {
-        printf("%s'%s' send from cache\n", MAGENTA_COLOR, connection->request_url);
-        send(connection->client_fd, cache_page->value, cache_page->value_size, 0);
-        pthread_exit(NULL);
+        mutex_try_lock(&mutex);
+        Hashmap_List_Element *cache_page = hashmap_get(cache, connection->request_url);
+        mutex_try_unlock(&mutex);
+        if (cache_page)
+        {
+            printf("%s'%s' send from cache\n", MAGENTA_COLOR, connection->request_url);
+            send(connection->client_fd, cache_page->value, cache_page->value_size, 0);
+            pthread_exit(NULL);
+        }
     }
 
     // Backend -> Frontend -> Client
@@ -100,8 +101,7 @@ void *connection_routine(void *connection_raw)
         connection_parse_response(connection,
                                   connection->response_data, connection->response_data_length);
         mutex_try_lock(&mutex);
-        if (connection->response_is_ok &&
-            !hashmap_get(cache, connection->request_url))
+        if (connection->response_is_ok && !hashmap_get(cache, connection->request_url))
         {
             hashmap_insert(
                 cache,

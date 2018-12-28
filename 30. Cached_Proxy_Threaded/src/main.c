@@ -58,8 +58,8 @@ void at_exit()
 	is_disposed = 1;
 	freeaddrinfo(backend_ai);
 	shutdown(frontend_fd, SHUT_RDWR);
-	hashmap_dispose(&cache);
 	close(frontend_fd);
+	hashmap_dispose(&cache);
 	printf("%sStopped listenning.\n", GREEN_COLOR);
 }
 
